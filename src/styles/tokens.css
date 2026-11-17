@@ -1,0 +1,120 @@
+/*
+ * Tokens de diseño del STI (DESIGN.md). Fuente única de color.
+ * `scripts/check-contrast.mjs` lee ESTE archivo y falla si una pareja texto/fondo < 4.5:1.
+ * Los modos sensoriales se aplican con atributos en <html>:
+ *   data-calma="true"        -> paleta desaturada
+ *   data-contraste="alto"    -> alto contraste
+ */
+:root {
+  /* Neutros */
+  --tinta: #1b1f3b;
+  --tinta-suave: #4a4f72;
+  --papel: #f6f8ff;
+  --blanco: #ffffff;
+
+  /* Colores de módulo (sólidos) y color de texto que va encima */
+  --cobalto: #2b50e8;
+  --on-cobalto: #ffffff;
+  --mandarina: #ff8a1f;
+  --on-mandarina: #1b1f3b;
+  --fucsia: #d12a85; /* #E8368F del brief daba 3.92:1; oscurecido a >=4.5:1 */
+  --on-fucsia: #ffffff;
+  --turquesa: #0b7f8a;
+  --on-turquesa: #ffffff;
+  --limon: #ffd43b;
+  --on-limon: #1b1f3b;
+  --uva: #6b3fd0;
+  --on-uva: #ffffff;
+
+  /* Tintes claros (fondos de sección; texto tinta encima) */
+  --cobalto-tinte: #dce2fc;
+  --mandarina-tinte: #f7eae2;
+  --fucsia-tinte: #f0dcee;
+  --turquesa-tinte: #d7e8f0;
+  --limon-tinte: #f7f3e6;
+  --uva-tinte: #e4e0f9;
+
+  /* Semáforo: forma + ícono + palabra siempre */
+  --verde: #167235;
+  --verde-tinte: #dff3e4;
+  --amarillo: #8a5a00; /* texto/ícono sobre claro */
+  --amarillo-fondo: #ffd43b; /* relleno de la forma, contorno tinta */
+  --amarillo-tinte: #fff3c4;
+  --rojo: #c62828;
+  --rojo-tinte: #fbe0e0;
+
+  /* Semánticos */
+  --borde: var(--tinta);
+  --sombra: var(--tinta);
+  --foco: var(--cobalto);
+  --enlace: var(--cobalto);
+  --error: var(--rojo);
+}
+
+/* Modo calma: misma jerarquía, saturación reducida */
+:root[data-calma='true'] {
+  --tinta: #2a2d3e;
+  --tinta-suave: #50546a;
+  --papel: #f4f4f2;
+  --blanco: #fbfbfa;
+
+  --cobalto: #566abd;
+  --enlace: #34438f;
+  --foco: #34438f;
+  --mandarina: #cd8c51;
+  --fucsia: #9f4376;
+  --turquesa: #28676d;
+  --limon: #d3bb67;
+  --uva: #7860af;
+  --on-mandarina: #2a2d3e;
+  --on-limon: #2a2d3e;
+
+  --cobalto-tinte: #dcdfea;
+  --mandarina-tinte: #eee4da;
+  --fucsia-tinte: #e7d9df;
+  --turquesa-tinte: #d5dfde;
+  --limon-tinte: #efebdd;
+  --uva-tinte: #e1dee8;
+
+  --verde: #276b3d;
+  --verde-tinte: #e3eee6;
+  --amarillo: #7a5710;
+  --amarillo-fondo: #d3bb67;
+  --amarillo-tinte: #f1ead2;
+  --rojo: #a83a3a;
+  --rojo-tinte: #f0e0e0;
+}
+
+/* Alto contraste: negro/blanco, colores más oscuros (>= 7:1 con su texto) */
+:root[data-contraste='alto'] {
+  --tinta: #000000;
+  --tinta-suave: #1f2333;
+  --papel: #ffffff;
+  --blanco: #ffffff;
+
+  --cobalto: #1a38b8;
+  --mandarina: #ffa23a;
+  --fucsia: #a8135f;
+  --turquesa: #00606a;
+  --limon: #ffd43b;
+  --uva: #5326b8;
+  --on-mandarina: #000000;
+  --on-limon: #000000;
+
+  --cobalto-tinte: #e4e7f6;
+  --mandarina-tinte: #fff4e7;
+  --fucsia-tinte: #f5e3ec;
+  --turquesa-tinte: #e0eced;
+  --limon-tinte: #fffae7;
+  --uva-tinte: #eae5f6;
+
+  --verde: #0b5d22;
+  --verde-tinte: #e3f4e8;
+  --amarillo: #6b4500;
+  --amarillo-fondo: #ffd43b;
+  --amarillo-tinte: #fff6cf;
+  --rojo: #9e0f0f;
+  --rojo-tinte: #fbe4e4;
+}
+
+/* Calma + alto contraste a la vez: gana alto contraste (declarado después, misma especificidad). */

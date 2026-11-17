@@ -1,0 +1,121 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --fuente-titulo: 'Lexend Variable', 'Lexend', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fuente-cuerpo: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+:root[data-fuente='dislexia'] {
+  --fuente-titulo: 'OpenDyslexic', 'Atkinson Hyperlegible', system-ui, sans-serif;
+  --fuente-cuerpo: 'OpenDyslexic', 'Atkinson Hyperlegible', system-ui, sans-serif;
+}
+:root[data-fuente='sistema'] {
+  --fuente-titulo: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fuente-cuerpo: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Tamaño de texto del usuario: escala todo el sistema (rem). */
+html {
+  font-size: 100%;
+}
+html[data-texto='115'] {
+  font-size: 115%;
+}
+html[data-texto='130'] {
+  font-size: 130%;
+}
+
+/* Espaciado de lectura ampliado. */
+html[data-espaciado='amplio'] body {
+  line-height: 1.9;
+  letter-spacing: 0.02em;
+  word-spacing: 0.08em;
+}
+html[data-espaciado='amplio'] p,
+html[data-espaciado='amplio'] li {
+  margin-bottom: 0.5em;
+}
+
+/* Sin movimiento: ajuste del usuario o preferencia del sistema. Anula todo. */
+html[data-movimiento='sin'] *,
+html[data-movimiento='sin'] *::before,
+html[data-movimiento='sin'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-papel font-cuerpo text-base text-tinta antialiased;
+    line-height: 1.6;
+    text-align: left;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-titulo font-semibold text-tinta;
+    letter-spacing: 0.01em;
+  }
+  h1 {
+    @apply text-3xl;
+  }
+  h2 {
+    @apply text-xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
+  p {
+    @apply max-w-medida;
+  }
+  a {
+    @apply text-enlace underline underline-offset-2;
+  }
+  /* Foco siempre visible: 2px blanco + 3px cobalto (DESIGN.md). Se compone con la sombra plana. */
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    @apply ring-[3px] ring-foco ring-offset-2 ring-offset-blanco;
+    outline: 3px solid transparent; /* visible en modo de colores forzados de Windows */
+  }
+  /* Destinos de foco programático (títulos, <main>): no son controles, sin anillo. */
+  h1[tabindex='-1']:focus-visible,
+  h2[tabindex='-1']:focus-visible,
+  main[tabindex='-1']:focus-visible {
+    box-shadow: none;
+  }
+  ::selection {
+    @apply bg-limon text-limon-on;
+  }
+  button,
+  [role='button'],
+  summary {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* Superficie con límite inequívoco: borde 2px tinta + sombra plana. */
+  .superficie {
+    @apply border-2 border-borde bg-blanco;
+  }
+  /* Velo de los modales: tinta semitransparente plana (sin degradado ni desenfoque). */
+  .velo {
+    background-color: color-mix(in srgb, var(--tinta) 60%, transparent);
+  }
+}

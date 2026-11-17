@@ -1,0 +1,8 @@
+name = "sti-frontend"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "./dist"
+
+# BACKEND_URL se define en el panel de Cloudflare Pages (Settings > Variables) o con
+# `wrangler pages secret put BACKEND_URL`. Para probar en local con `wrangler pages dev dist`:
+# [vars]
+# BACKEND_URL = "http://localhost:8000"
