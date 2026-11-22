@@ -185,7 +185,7 @@ export default function TableroBienestar() {
                     {est.nombre_completo}
                   </h3>
                   <span className="rounded bg-papel px-2 py-0.5 text-xs font-semibold text-tinta-suave border border-borde">
-                    {est.codigo_estudiante}
+                    Doc: {est.codigo_estudiante}
                   </span>
                   {est.semaforo && <Semaforo estado={est.semaforo} size="sm" />}
                 </div>

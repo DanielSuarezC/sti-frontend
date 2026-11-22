@@ -102,7 +102,7 @@ export default function EstudianteDetalle() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title={estudiante.nombre_completo}
-          description={`${estudiante.codigo_estudiante} · ${estudiante.email}`}
+          description={`Cédula/Doc: ${estudiante.codigo_estudiante} · ${estudiante.email}`}
         />
         <Button variant="secundaria" onClick={() => navigate('/bienestar/tablero')}>
           {t('bienestar.volver_al_tablero')}

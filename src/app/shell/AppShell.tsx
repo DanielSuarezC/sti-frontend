@@ -69,6 +69,7 @@ function SideRail({
   onLogout: () => void;
 }) {
   const intl = useIntl();
+  const location = useLocation();
   return (
     <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 border-r-2 border-borde bg-blanco p-4 lg:flex">
       <Brand />
@@ -77,14 +78,30 @@ function SideRail({
         className="flex-1 overflow-y-auto"
       >
         <ul role="list" className="space-y-2">
-          {items.map((it) => (
-            <li key={it.to}>
-              <NavLink to={it.to} end={it.end} className={itemClase}>
-                <it.icon aria-hidden className="size-6 shrink-0" />
-                {intl.formatMessage({ id: it.labelId })}
-              </NavLink>
-            </li>
-          ))}
+          {items.map((it) => {
+            const isCustomActive =
+              (it.to.includes('inasistencia') && location.pathname.includes('inasistencia')) ||
+              (it.to.includes('asignaturas') && location.pathname.includes('asignatura'));
+            return (
+              <li key={it.to}>
+                <NavLink
+                  to={it.to}
+                  end={it.end}
+                  className={({ isActive }) => itemClase({ isActive: isActive || isCustomActive })}
+                >
+                  <it.icon aria-hidden className="size-6 shrink-0" />
+                  <span className="flex-1">{intl.formatMessage({ id: it.labelId })}</span>
+                  {(location.pathname === it.to || isCustomActive) && (
+                    <span
+                      aria-hidden
+                      className="size-2 rounded-full bg-limon shrink-0"
+                      title="Ubicación actual"
+                    />
+                  )}
+                </NavLink>
+              </li>
+            );
+          })}
         </ul>
       </nav>
       <div className="space-y-2 border-t-2 border-borde pt-4">

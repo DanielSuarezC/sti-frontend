@@ -146,7 +146,7 @@ export default function AQ10() {
           description={t('aq10.resultado_descripcion')}
         />
 
-        <Card className="p-6 space-y-4">
+        <Card className="p-6 space-y-5">
           <div className="rounded-control border-2 border-verde bg-verde-tinte p-4">
             <h3 className="font-titulo text-lg font-bold text-verde">
               {t('aq10.gracias')}
@@ -154,12 +154,35 @@ export default function AQ10() {
             <p className="mt-2 text-base">{resultado.mensaje}</p>
           </div>
 
+          {/* Explicación explícita del siguiente paso */}
+          <div className="rounded-control border-2 border-cobalto bg-cobalto-tinte p-5 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-cobalto px-2.5 py-0.5 text-xs font-bold text-blanco">
+                Paso siguiente
+              </span>
+              <h4 className="font-titulo text-base font-bold text-cobalto">
+                A cargo de: Bienestar Institucional
+              </h4>
+            </div>
+            <p className="text-sm text-tinta">
+              Has completado el paso de <strong>Autoconocimiento</strong>. Ahora, el equipo profesional de
+              <strong> Bienestar Institucional</strong> revisará la información para continuar con la
+              caracterización de necesidades, análisis de contexto universitario (F1–F5) y el diseño de la
+              propuesta del Plan MAAR-TEA.
+            </p>
+            <p className="text-xs text-tinta-suave">
+              <strong>¿Qué debes hacer tú?</strong> Por ahora no necesitas hacer nada más en el sistema.
+              Bienestar se comunicará contigo para concertar y validar juntos tus apoyos y ajustes razonables
+              antes de su formalización.
+            </p>
+          </div>
+
           <div className="rounded-control border-2 border-borde bg-papel p-4 text-sm text-tinta-suave">
             <p className="font-bold">{t('aq10.recordatorio_importante')}</p>
             <p className="mt-1">{resultado.mensaje_tamizaje}</p>
           </div>
 
-          <div className="pt-4 flex justify-end">
+          <div className="pt-2 flex justify-end">
             <Button variant="primaria" onClick={() => navigate('/estudiante/mi-ruta')}>
               {t('aq10.ver_mi_ruta')}
             </Button>

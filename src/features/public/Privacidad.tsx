@@ -1,5 +1,7 @@
 import { useIntl } from 'react-intl';
-import { Card, PageHeader } from '@/components/ui';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { Button, Card, PageHeader } from '@/components/ui';
 import { NarrowPage } from './PublicLayout';
 import { useDocumentTitle } from './useDocumentTitle';
 
@@ -18,10 +20,20 @@ const SECCIONES: { n: number; parrafos: number; lista?: boolean }[] = [
 /** Aviso de privacidad (Ley 1581 de 2012), en lenguaje claro. */
 export default function Privacidad() {
   const intl = useIntl();
+  const navigate = useNavigate();
   const t = (id: string) => intl.formatMessage({ id });
   useDocumentTitle(t('privacidad.titulo'));
   return (
     <NarrowPage>
+      <div className="mb-4">
+        <Button
+          variant="secundaria"
+          leftIcon={<ArrowLeft className="size-4" />}
+          onClick={() => navigate(-1)}
+        >
+          {t('comun.volver')}
+        </Button>
+      </div>
       <PageHeader title={t('privacidad.titulo')} description={t('privacidad.descripcion')} />
       <div className="space-y-6">
         {SECCIONES.map((s) => (
@@ -50,6 +62,15 @@ export default function Privacidad() {
       <p className="mt-8 rounded-control border-2 border-dashed border-borde bg-limon-tinte p-4 text-sm">
         {t('privacidad.nota_revision')}
       </p>
+      <div className="mt-6 flex justify-start">
+        <Button
+          variant="secundaria"
+          leftIcon={<ArrowLeft className="size-4" />}
+          onClick={() => navigate(-1)}
+        >
+          {t('comun.volver')}
+        </Button>
+      </div>
     </NarrowPage>
   );
 }

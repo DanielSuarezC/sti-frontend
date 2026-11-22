@@ -26,10 +26,12 @@ export default function AltaEstudiante() {
   // Formulario
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
+  const [tipoCorreo, setTipoCorreo] = useState<'INSTITUCIONAL' | 'PERSONAL'>('INSTITUCIONAL');
   const [codigo, setCodigo] = useState('');
   const [programaId, setProgramaId] = useState('');
   const [telefono, setTelefono] = useState('');
   const [semestreActual, setSemestreActual] = useState('1');
+  const [consentimientoVerbal, setConsentimientoVerbal] = useState(true);
 
   const [guardando, setGuardando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
@@ -56,6 +58,10 @@ export default function AltaEstudiante() {
       setErrorEnvio(t('bienestar.error_programa_requerido'));
       return;
     }
+    if (!consentimientoVerbal) {
+      setErrorEnvio('Debes confirmar que cuentas con el consentimiento verbal informado del estudiante.');
+      return;
+    }
 
     setGuardando(true);
     setErrorEnvio(null);
@@ -64,10 +70,14 @@ export default function AltaEstudiante() {
       const res = await api.post<{ estudiante_id: number; detail: string }>('/usuarios/estudiantes', {
         nombre_completo: nombre.trim(),
         email: email.trim(),
+        cedula: codigo.trim(),
         codigo_estudiante: codigo.trim(),
+        tipo_correo: tipoCorreo,
+        es_correo_personal: tipoCorreo === 'PERSONAL',
         programa_id: Number(programaId),
         telefono: telefono.trim() || null,
         semestre_actual: Number(semestreActual) || 1,
+        consentimiento_verbal_declarado: true,
       });
 
       setExito({ id: res.estudiante_id, detail: res.detail });
@@ -135,20 +145,51 @@ export default function AltaEstudiante() {
             />
 
             <Input
-              label={t('bienestar.campo_codigo_estudiante')}
+              label="Cédula / Documento de identidad"
               required
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
-              placeholder="p. ej. 10203040"
+              placeholder="Número de cédula o documento de identidad"
             />
 
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold">Tipo de correo del estudiante</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tipoCorreo"
+                    value="INSTITUCIONAL"
+                    checked={tipoCorreo === 'INSTITUCIONAL'}
+                    onChange={() => setTipoCorreo('INSTITUCIONAL')}
+                  />
+                  <span>Institucional (@unicordoba.edu.co)</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="tipoCorreo"
+                    value="PERSONAL"
+                    checked={tipoCorreo === 'PERSONAL'}
+                    onChange={() => setTipoCorreo('PERSONAL')}
+                  />
+                  <span>Personal (Gmail, Outlook, etc.)</span>
+                </label>
+              </div>
+              <p className="text-xs text-tinta-suave">
+                {tipoCorreo === 'PERSONAL'
+                  ? 'Permite registrar estudiantes de primer semestre que aún no cuentan con correo institucional asignado.'
+                  : 'Correo oficial asignado por la Universidad de Córdoba.'}
+              </p>
+            </div>
+
             <Input
-              label={t('bienestar.campo_email_institucional')}
+              label={tipoCorreo === 'PERSONAL' ? 'Correo electrónico personal' : 'Correo electrónico institucional'}
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="usuario@unicordoba.edu.co"
+              placeholder={tipoCorreo === 'PERSONAL' ? 'estudiante@gmail.com' : 'usuario@unicordoba.edu.co'}
             />
 
             <Select
@@ -183,6 +224,27 @@ export default function AltaEstudiante() {
                 value={semestreActual}
                 onChange={(e) => setSemestreActual(e.target.value)}
               />
+            </div>
+
+            {/* Consentimiento verbal informado */}
+            <div className="rounded-control border-2 border-cobalto bg-cobalto-tinte p-4 space-y-2">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  required
+                  checked={consentimientoVerbal}
+                  onChange={(e) => setConsentimientoVerbal(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-2 border-borde text-cobalto focus:ring-cobalto"
+                />
+                <span className="text-sm font-semibold text-tinta">
+                  Declaro que he informado al estudiante sobre el modelo MAAR-TEA y he obtenido su{' '}
+                  <span className="text-cobalto font-bold underline">consentimiento verbal informado</span> para
+                  iniciar su expediente y enviarle la invitación digital para la firma del consentimiento informado (F0).
+                </span>
+              </label>
+              <p className="text-xs text-tinta-suave pl-7">
+                El consentimiento verbal autoriza la apertura del expediente en Bienestar. El estudiante deberá firmar el Formato F0 digital en su primer inicio de sesión.
+              </p>
             </div>
 
             <div className="rounded-control border-2 border-limon bg-limon-tinte p-3 text-xs font-medium text-tinta">

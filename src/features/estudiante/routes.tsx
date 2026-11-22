@@ -52,4 +52,32 @@ export const estudianteRoutes: RouteObject[] = [
       return { Component: Comp };
     },
   },
+  {
+    path: 'barreras',
+    lazy: async () => {
+      const Comp = (await import('./MiPerfil')).default;
+      return { Component: Comp };
+    },
+  },
+  {
+    path: 'evaluacion',
+    lazy: async () => {
+      const Comp = (await import('./Seguimiento')).default;
+      return { Component: Comp };
+    },
+  },
+  {
+    path: 'continuidad',
+    lazy: async () => {
+      const Comp = (await import('./MiPlan')).default;
+      return { Component: Comp };
+    },
+  },
+  {
+    path: 'avisos',
+    lazy: async () => {
+      const Comp = (await import('@/features/_shared/Avisos')).default;
+      return { Component: Comp };
+    },
+  },
 ];

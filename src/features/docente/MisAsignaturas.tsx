@@ -45,6 +45,13 @@ function esEstadoSemaforo(val: string | null): val is EstadoSemaforo {
   return val === 'VERDE' || val === 'AMARILLO' || val === 'ROJO';
 }
 
+function formatCorte(corte: string): string {
+  if (corte === 'C1') return 'Corte 1';
+  if (corte === 'C2') return 'Corte 2';
+  if (corte === 'C3') return 'Corte 3';
+  return corte.replace(/^C(\d+)$/i, 'Corte $1');
+}
+
 export default function MisAsignaturas() {
   const t = useT();
 
@@ -82,10 +89,11 @@ export default function MisAsignaturas() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <PageHeader
           title={t('docente.asignaturas_titulo')}
           description={t('docente.asignaturas_desc')}
+          className="mb-0"
         />
         <Link to="/docente/ajustes" className={buttonClasses('primaria')}>
           {t('docente.ver_todos_los_ajustes')}
@@ -157,9 +165,9 @@ export default function MisAsignaturas() {
                         {item.cortes.map((c) => (
                           <div
                             key={c.corte}
-                            className="flex flex-col items-center rounded border border-borde p-1 text-xs"
+                            className="flex flex-col items-center rounded border border-borde p-1.5 text-xs min-w-[3.75rem]"
                           >
-                            <span className="font-bold">{c.corte}</span>
+                            <span className="font-bold text-tinta">{formatCorte(c.corte)}</span>
                             {esEstadoSemaforo(c.semaforo) ? (
                               <Semaforo estado={c.semaforo} size="sm" />
                             ) : (

@@ -89,7 +89,7 @@ export default function MiRuta() {
         description={t('miruta.descripcion')}
       />
 
-      {rutaData.siguiente_accion && (
+      {rutaData.siguiente_accion ? (
         <Card className="border-2 border-cobalto bg-cobalto-tinte p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -113,6 +113,24 @@ export default function MiRuta() {
               </button>
             )}
           </div>
+        </Card>
+      ) : (
+        <Card className="border-2 border-mandarina bg-mandarina-tinte p-5 space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-mandarina">
+            Estado de tu ruta
+          </p>
+          <h2 className="font-titulo text-base font-bold text-tinta">
+            Paso en curso a cargo de: Bienestar Institucional
+          </h2>
+          <p className="text-sm text-tinta">
+            Has completado las actividades iniciales de autoconocimiento. En esta etapa, el equipo de
+            Bienestar Universitario está analizando el contexto de tus asignaturas y estructurando la
+            propuesta de tu Plan MAAR-TEA.
+          </p>
+          <p className="text-xs text-tinta-suave">
+            No requieres realizar ninguna acción en este momento. Recibirás una notificación cuando el
+            plan esté listo para que participes en la concertación y acuerdo de tus ajustes.
+          </p>
         </Card>
       )}
 

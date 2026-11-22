@@ -192,7 +192,7 @@ export function MiRuta({ pasos, showLegend = true, className }: MiRutaProps) {
         )}
         aria-describedby={descId}
         aria-current={p.estado === 'actual' ? 'step' : undefined}
-        className={cn(common, 'hover:bg-limon-tinte')}
+        className={cn(common, 'hover:bg-limon-tinte cursor-pointer')}
       >
         {content}
       </button>
@@ -210,7 +210,7 @@ export function MiRuta({ pasos, showLegend = true, className }: MiRutaProps) {
           <div className="relative w-full" style={{ aspectRatio: `${W} / ${H}` }}>
             <svg
               viewBox={`0 0 ${W} ${H}`}
-              className="absolute inset-0 size-full"
+              className="pointer-events-none absolute inset-0 size-full"
               aria-hidden
               focusable="false"
             >

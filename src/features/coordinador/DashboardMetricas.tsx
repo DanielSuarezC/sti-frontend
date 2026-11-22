@@ -10,6 +10,7 @@ import {
   Stat,
 } from '@/components/ui';
 import { api, type ApiError } from '@/lib/api';
+import { descargarReporte } from '@/features/_shared/api';
 
 interface DashboardReporte {
   k_minimo: number;
@@ -55,6 +56,9 @@ export default function DashboardMetricas() {
   const [dashboard, setDashboard] = useState<DashboardReporte | null>(null);
   const [ajustesFrecuentes, setAjustesFrecuentes] = useState<AjustesFrecuentesReporte | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+  const [errorExportar, setErrorExportar] = useState<string | null>(null);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,11 +86,21 @@ export default function DashboardMetricas() {
     };
   }, []);
 
-  const handleExportar = async (tipo: string) => {
+  const handleExportar = async (tipo: any) => {
+    setExportando(true);
+    setMensajeExito(null);
+    setErrorExportar(null);
     try {
-      window.open(`/api/v1/reportes/${tipo}/export?formato=xlsx`, '_blank');
-    } catch {
-      // Manejo de error
+      await descargarReporte(tipo, 'xlsx', {});
+      setMensajeExito(
+        t('coord.reporte_descargado_exito', {
+          defaultMessage: 'Informe en Excel descargado con éxito.',
+        }),
+      );
+    } catch (err: any) {
+      setErrorExportar(err.detail || 'Error al exportar informe en Excel.');
+    } finally {
+      setExportando(false);
     }
   };
 
@@ -108,11 +122,27 @@ export default function DashboardMetricas() {
           description={t('coord.metricas_descripcion')}
         />
         <div className="flex gap-2">
-          <Button variant="secundaria" onClick={() => handleExportar('dashboard')}>
+          <Button
+            variant="secundaria"
+            onClick={() => handleExportar('dashboard')}
+            loading={exportando}
+          >
             {t('coord.boton_exportar_excel')}
           </Button>
         </div>
       </div>
+
+      {mensajeExito && (
+        <div className="rounded-control border-2 border-verde bg-verde-tinte p-3 text-sm text-verde-oscuro font-bold">
+          {mensajeExito}
+        </div>
+      )}
+
+      {errorExportar && (
+        <div className="rounded-control border-2 border-rojo bg-rojo-tinte p-3 text-sm text-rojo font-bold">
+          {errorExportar}
+        </div>
+      )}
 
       {dashboard.nota_privacidad && (
         <div

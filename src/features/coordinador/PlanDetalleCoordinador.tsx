@@ -10,7 +10,7 @@ import {
   PageHeader,
   Textarea,
 } from '@/components/ui';
-import { api, type ApiError } from '@/lib/api';
+import { api, saveBlob, type ApiError } from '@/lib/api';
 import { PlanView } from '@/features/_shared/PlanView';
 import type { Plan } from '@/features/_shared/types';
 
@@ -28,6 +28,7 @@ export default function PlanDetalleCoordinador() {
   const [modalDevolver, setModalDevolver] = useState(false);
   const [comentariosDevolucion, setComentariosDevolucion] = useState('');
   const [ejecutando, setEjecutando] = useState(false);
+  const [descargandoDocumento, setDescargandoDocumento] = useState(false);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
 
@@ -116,11 +117,43 @@ export default function PlanDetalleCoordinador() {
 
   const handleExportar = async (formato: 'pdf' | 'docx' | 'html') => {
     if (!plan) return;
+    setDescargandoDocumento(true);
+    setErrorAccion(null);
+    setMensajeExito(null);
+
     try {
-      await api.post(`/planes/${plan.id}/exportar?formato=${formato}`);
-      alert(t('coord.exportacion_solicitada_exito'));
+      let exp = await api.post<{ id: number; estado: string; archivo_nombre?: string; formato: string }>(
+        `/planes/${plan.id}/exportar?formato=${formato}`,
+      );
+
+      // Si la exportación es asíncrona, consultar periódicamente
+      for (let i = 0; i < 15 && (exp.estado === 'SOLICITADA' || exp.estado === 'PROCESANDO'); i++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        exp = await api.get<{ id: number; estado: string; archivo_nombre?: string; formato: string }>(
+          `/exportaciones/${exp.id}`,
+        );
+      }
+
+      if (exp.estado === 'LISTA') {
+        const file = await api.getBlob(`/exportaciones/${exp.id}/descargar`);
+        saveBlob(file, exp.archivo_nombre ?? `plan-maar-tea-${plan.estudiante.id}.${formato}`);
+        setMensajeExito(
+          t('coord.documento_descargado_exito', {
+            defaultMessage: 'Documento oficial descargado con éxito.',
+          }),
+        );
+      } else {
+        setErrorAccion(
+          t('coord.error_generar_documento', {
+            defaultMessage: 'No fue posible completar la generación del documento. Intente de nuevo.',
+          }),
+        );
+      }
     } catch (err: any) {
-      alert(err.detail || 'Error al solicitar exportación');
+      const apiErr = err as ApiError;
+      setErrorAccion(apiErr.detail || 'Error al descargar documento oficial');
+    } finally {
+      setDescargandoDocumento(false);
     }
   };
 
@@ -240,6 +273,24 @@ export default function PlanDetalleCoordinador() {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Block-UI al descargar documento oficial */}
+      <Dialog
+        open={descargandoDocumento}
+        onOpenChange={() => {}}
+        title="Generando documento oficial"
+        size="sm"
+      >
+        <div className="flex flex-col items-center justify-center p-6 space-y-4">
+          <div className="size-12 animate-spin rounded-full border-4 border-cobalto border-t-transparent" />
+          <p className="text-center font-titulo text-base font-semibold">
+            Descargando documento oficial del Plan MAAR-TEA...
+          </p>
+          <p className="text-center text-xs text-tinta-suave">
+            Por favor, espera unos segundos mientras el sistema compila y prepara el archivo PDF.
+          </p>
+        </div>
       </Dialog>
     </div>
   );
