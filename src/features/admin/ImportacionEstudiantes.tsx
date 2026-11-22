@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react';
-import { Download, FileCheck, Upload, AlertTriangle } from 'lucide-react';
+import { FileCheck, Upload, AlertTriangle, FileSpreadsheet, FileText } from 'lucide-react';
 import {
   Badge,
   Button,
   Card,
   CardTitle,
   PageHeader,
+  useToast,
 } from '@/components/ui';
 import { api, type ApiError } from '@/lib/api';
 import { useT } from '@/lib/useT';
@@ -13,31 +14,74 @@ import { useT } from '@/lib/useT';
 interface FilaError {
   fila: number;
   campo?: string;
-  error: string;
+  error?: string;
+  mensaje?: string;
 }
 
 interface ResultadoImportacion {
   nombre_archivo: string;
   dry_run: boolean;
   total_filas: number;
-  filas_validas: number;
-  estudiantes_creados: number;
-  usuarios_creados: number;
+  filas_validas?: number;
+  validas?: number;
+  estudiantes_creados?: number;
+  usuarios_creados?: number;
+  creados?: number;
   errores: FilaError[];
 }
 
 export default function ImportacionEstudiantes() {
   const t = useT();
+  const { toast } = useToast();
 
   const [archivo, setArchivo] = useState<File | null>(null);
   const [omitirErrores, setOmitirErrores] = useState(false);
   const [procesando, setProcesando] = useState(false);
+  const [descargando, setDescargando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoImportacion | null>(null);
   const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDescargarPlantilla = () => {
-    window.open('/api/v1/admin/estudiantes/plantilla-csv', '_blank');
+  const handleDescargarPlantillaXLSX = async () => {
+    setDescargando(true);
+    try {
+      await api.downloadFile('/admin/estudiantes/plantilla-xlsx', 'plantilla_estudiantes.xlsx');
+      toast({
+        variant: 'exito',
+        title: 'Plantilla Excel descargada',
+        description: 'Se descargó el archivo plantilla_estudiantes.xlsx con el formato oficial.',
+      });
+    } catch (err: any) {
+      const apiErr = err as ApiError;
+      toast({
+        variant: 'error',
+        title: 'Error al descargar la plantilla Excel',
+        description: apiErr.detail || 'No se pudo descargar la plantilla.',
+      });
+    } finally {
+      setDescargando(false);
+    }
+  };
+
+  const handleDescargarPlantillaCSV = async () => {
+    setDescargando(true);
+    try {
+      await api.downloadFile('/admin/estudiantes/plantilla-csv', 'plantilla_estudiantes.csv');
+      toast({
+        variant: 'exito',
+        title: 'Plantilla CSV descargada',
+        description: 'Se descargó el archivo plantilla_estudiantes.csv.',
+      });
+    } catch (err: any) {
+      const apiErr = err as ApiError;
+      toast({
+        variant: 'error',
+        title: 'Error al descargar la plantilla CSV',
+        description: apiErr.detail || 'No se pudo descargar la plantilla.',
+      });
+    } finally {
+      setDescargando(false);
+    }
   };
 
   const ejecutarImportacion = async (esDryRun: boolean) => {
@@ -50,13 +94,31 @@ export default function ImportacionEstudiantes() {
 
     try {
       const res = await api.post<ResultadoImportacion>(
-        `/admin/estudiantes/importar-csv?dry_run=${esDryRun}&omitir_errores=${omitirErrores}`,
+        `/admin/estudiantes/importar?dry_run=${esDryRun}&omitir_errores=${omitirErrores}`,
         formData
       );
       setResultado(res);
+      if (!esDryRun) {
+        toast({
+          variant: 'exito',
+          title: 'Importación completada',
+          description: `Se procesó exitosamente el archivo ${archivo.name}. Creados: ${res.creados ?? res.estudiantes_creados ?? 0}`,
+        });
+      } else {
+        toast({
+          variant: 'info',
+          title: 'Validación completada',
+          description: `El archivo contiene ${res.total_filas} filas. Filas válidas: ${res.validas ?? res.filas_validas ?? 0}, Errores: ${res.errores.length}`,
+        });
+      }
     } catch (err: any) {
       const apiErr = err as ApiError;
       setErrorGlobal(apiErr.detail || t('admin.csv.error_procesar'));
+      toast({
+        variant: 'error',
+        title: 'Error en la importación',
+        description: apiErr.detail || 'No fue posible procesar el archivo seleccionado.',
+      });
     } finally {
       setProcesando(false);
     }
@@ -67,21 +129,38 @@ export default function ImportacionEstudiantes() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageHeader
           title={t('admin.csv.titulo')}
-          description={t('admin.csv.descripcion')}
+          description="Carga masiva de estudiantes matriculados (Vía 3) mediante archivos Excel (.xlsx) o CSV (.csv)."
         />
-        <Button variant="secundaria" onClick={handleDescargarPlantilla}>
-          <Download className="mr-2 h-4 w-4" />
-          {t('admin.csv.boton_descargar_plantilla')}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="primaria"
+            loading={descargando}
+            onClick={handleDescargarPlantillaXLSX}
+          >
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Descargar plantilla Excel (.xlsx)
+          </Button>
+          <Button
+            variant="secundaria"
+            loading={descargando}
+            onClick={handleDescargarPlantillaCSV}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Descargar plantilla CSV
+          </Button>
+        </div>
       </div>
 
       <Card className="p-6 space-y-6 max-w-2xl">
         <CardTitle>{t('admin.csv.seleccionar_archivo_titulo')}</CardTitle>
+        <p className="text-xs text-tinta-suave">
+          Soporta formatos <strong>.xlsx (Microsoft Excel)</strong> y <strong>.csv (delimitado por comas o punto y coma)</strong> de hasta 2 MB (máximo 1000 filas).
+        </p>
 
         <div className="space-y-4">
           <input
             type="file"
-            accept=".csv"
+            accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
             ref={fileInputRef}
             onChange={(e) => {
               setArchivo(e.target.files?.[0] ?? null);
@@ -156,7 +235,7 @@ export default function ImportacionEstudiantes() {
             </div>
             <div className="rounded bg-fondo-suave p-3">
               <p className="text-xs text-tinta-suave">{t('admin.csv.filas_validas')}</p>
-              <p className="text-xl font-bold text-semaforo-verde">{resultado.filas_validas}</p>
+              <p className="text-xl font-bold text-semaforo-verde">{resultado.validas ?? resultado.filas_validas ?? 0}</p>
             </div>
             <div className="rounded bg-fondo-suave p-3">
               <p className="text-xs text-tinta-suave">{t('admin.csv.con_errores')}</p>
@@ -167,8 +246,8 @@ export default function ImportacionEstudiantes() {
           {!resultado.dry_run && (
             <p className="text-sm font-semibold text-semaforo-verde">
               {t('admin.csv.resumen_creados', {
-                est: resultado.estudiantes_creados,
-                usr: resultado.usuarios_creados,
+                est: resultado.creados ?? resultado.estudiantes_creados ?? 0,
+                usr: resultado.creados ?? resultado.usuarios_creados ?? 0,
               })}
             </p>
           )}
@@ -186,7 +265,7 @@ export default function ImportacionEstudiantes() {
                       {t('admin.csv.fila_n', { n: err.fila })}
                       {err.campo && ` · [${err.campo}]`}
                     </span>
-                    <span className="text-tinta-suave text-right">{err.error}</span>
+                    <span className="text-tinta-suave text-right">{err.mensaje || err.error}</span>
                   </li>
                 ))}
               </ul>

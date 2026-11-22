@@ -10,6 +10,7 @@ import {
   Input,
   LoadingState,
   PageHeader,
+  useToast,
 } from '@/components/ui';
 import { api, type ApiError } from '@/lib/api';
 import { useT, useFmt } from '@/lib/useT';
@@ -40,6 +41,7 @@ interface ParametroSistema {
 export default function CalendarioAdmin() {
   const t = useT();
   const f = useFmt();
+  const { toast } = useToast();
 
   const [calendarios, setCalendarios] = useState<Calendario[]>([]);
   const [parametros, setParametros] = useState<ParametroSistema[]>([]);
@@ -64,11 +66,14 @@ export default function CalendarioAdmin() {
 
   const cargarDatos = () => {
     setCargando(true);
+    setError(null);
     Promise.all([
-      api.get<Calendario[]>('/calendario'),
-      api.get<ParametroSistema[]>('/calendario/parametros'),
+      api.get<{ items: Calendario[] } | Calendario[]>('/calendario'),
+      api.get<{ items: ParametroSistema[] } | ParametroSistema[]>('/calendario/parametros'),
     ])
-      .then(([cals, params]) => {
+      .then(([calsRes, paramsRes]) => {
+        const cals = Array.isArray(calsRes) ? calsRes : (calsRes?.items ?? []);
+        const params = Array.isArray(paramsRes) ? paramsRes : (paramsRes?.items ?? []);
         setCalendarios(cals);
         setParametros(params);
         setCargando(false);
@@ -96,7 +101,18 @@ export default function CalendarioAdmin() {
         fecha_c2: fC2,
         fecha_c3: fC3,
       });
+      toast({
+        variant: 'exito',
+        title: 'Semestre creado',
+        description: `Se registró el calendario académico para ${semestre.trim()}.`,
+      });
       setModalAbierto(false);
+      setSemestre('');
+      setFInicio('');
+      setFFin('');
+      setFC1('');
+      setFC2('');
+      setFC3('');
       cargarDatos();
     } catch (err: any) {
       const apiErr = err as ApiError;
@@ -109,10 +125,19 @@ export default function CalendarioAdmin() {
   const handleActivar = async (id: number) => {
     try {
       await api.post(`/calendario/${id}/activar`, {});
+      toast({
+        variant: 'exito',
+        title: 'Semestre activado',
+        description: 'El semestre seleccionado ha sido establecido como el semestre académico activo.',
+      });
       cargarDatos();
     } catch (err: any) {
       const apiErr = err as ApiError;
-      alert(apiErr.detail || t('admin.calendario.error_activar'));
+      toast({
+        variant: 'error',
+        title: t('admin.calendario.error_activar'),
+        description: apiErr.detail || 'No se pudo activar el semestre.',
+      });
     }
   };
 
@@ -123,11 +148,20 @@ export default function CalendarioAdmin() {
       await api.put(`/calendario/parametros/${paramEditando.clave}`, {
         valor: nuevoValorParam,
       });
+      toast({
+        variant: 'exito',
+        title: 'Parámetro actualizado',
+        description: `Se actualizó el parámetro ${paramEditando.clave} a ${nuevoValorParam}.`,
+      });
       setParamEditando(null);
       cargarDatos();
     } catch (err: any) {
       const apiErr = err as ApiError;
-      alert(apiErr.detail || t('admin.calendario.error_guardar_param'));
+      toast({
+        variant: 'error',
+        title: t('admin.calendario.error_guardar_param'),
+        description: apiErr.detail || 'No se pudo guardar el parámetro.',
+      });
     } finally {
       setGuardandoParam(false);
     }

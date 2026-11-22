@@ -1,20 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Save } from 'lucide-react';
+import { RefreshCw, Save, Sparkles } from 'lucide-react';
 import {
   Badge,
   Button,
   Card,
   CardTitle,
-  EmptyState,
   Input,
   LoadingState,
   PageHeader,
+  useToast,
 } from '@/components/ui';
 import { api, type ApiError } from '@/lib/api';
 import { useT, useFmt } from '@/lib/useT';
 
 interface Aq10ConfigResponse {
-  version: number;
+  version: string | number;
   nombre: string;
   idioma: string;
   fuente?: string;
@@ -22,13 +22,15 @@ interface Aq10ConfigResponse {
   instrucciones?: string;
   items: Array<{
     numero: number;
-    enunciado: string;
-    sentido: string;
+    texto?: string;
+    enunciado?: string;
+    puntua_si?: string;
+    sentido?: string;
     dominio?: string;
   }>;
   versiones: Array<{
     id: number;
-    version: number;
+    version: string | number;
     activo: boolean;
     punto_corte: number;
     created_at: string;
@@ -38,16 +40,18 @@ interface Aq10ConfigResponse {
 export default function AQ10Admin() {
   const t = useT();
   const f = useFmt();
+  const { toast } = useToast();
 
   const [data, setData] = useState<Aq10ConfigResponse | null>(null);
   const [puntoCorte, setPuntoCorte] = useState<number>(6);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [inicializando, setInicializando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mensajeExito, setMensajeExito] = useState<string | null>(null);
 
   const cargarDatos = () => {
     setCargando(true);
+    setError(null);
     api
       .get<Aq10ConfigResponse>('/admin/aq10')
       .then((res) => {
@@ -68,18 +72,47 @@ export default function AQ10Admin() {
 
   const handleGuardarPuntoCorte = async () => {
     setGuardando(true);
-    setMensajeExito(null);
     try {
       const res = await api.put<{ punto_corte: number; detail: string }>('/admin/aq10/punto-corte', {
         punto_corte: Number(puntoCorte),
       });
-      setMensajeExito(res.detail || t('admin.aq10.guardado_exito'));
+      toast({
+        variant: 'exito',
+        title: t('admin.aq10.guardado_exito'),
+        description: res.detail,
+      });
       cargarDatos();
     } catch (err: any) {
       const apiErr = err as ApiError;
-      alert(apiErr.detail || t('admin.aq10.error_guardar'));
+      toast({
+        variant: 'error',
+        title: t('admin.aq10.error_guardar'),
+        description: apiErr.detail || 'Verifique el valor ingresado (debe estar entre 1 y 10).',
+      });
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const handleInicializarAQ10 = async () => {
+    setInicializando(true);
+    try {
+      await api.post('/admin/aq10/inicializar', {});
+      toast({
+        variant: 'exito',
+        title: 'Instrumento cargado exitosamente',
+        description: 'Se ha inicializado la versión 1.0 del AQ-10 Adultos (Allison et al., 2012).',
+      });
+      cargarDatos();
+    } catch (err: any) {
+      const apiErr = err as ApiError;
+      toast({
+        variant: 'error',
+        title: 'No se pudo cargar el AQ-10',
+        description: apiErr.detail || 'Ocurrió un error al cargar la semilla en la base de datos.',
+      });
+    } finally {
+      setInicializando(false);
     }
   };
 
@@ -89,10 +122,33 @@ export default function AQ10Admin() {
 
   if (error || !data) {
     return (
-      <EmptyState
-        title={t('admin.aq10.error_titulo')}
-        description={error ?? t('admin.aq10.error_cargar')}
-      />
+      <div className="space-y-6">
+        <PageHeader
+          title={t('admin.aq10.titulo')}
+          description={t('admin.aq10.descripcion')}
+        />
+        <Card className="p-8 text-center max-w-xl mx-auto space-y-4">
+          <Sparkles className="h-10 w-10 text-cobalto mx-auto" />
+          <h3 className="font-titulo text-lg font-bold">Instrumento AQ-10 pendiente de inicialización</h3>
+          <p className="text-sm text-tinta-suave">
+            {error || 'El instrumento de tamizaje AQ-10 aún no ha sido cargado en este entorno de base de datos.'}
+          </p>
+          <div className="pt-2 flex justify-center gap-3">
+            <Button
+              variant="primaria"
+              loading={inicializando}
+              onClick={handleInicializarAQ10}
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Cargar AQ-10 oficial (Allison et al., 2012)
+            </Button>
+            <Button variant="secundaria" onClick={cargarDatos}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Reintentar
+            </Button>
+          </div>
+        </Card>
+      </div>
     );
   }
 
@@ -102,12 +158,6 @@ export default function AQ10Admin() {
         title={t('admin.aq10.titulo')}
         description={t('admin.aq10.descripcion')}
       />
-
-      {mensajeExito && (
-        <div className="rounded-control bg-verde-claro/30 border border-semaforo-verde p-3 text-sm text-tinta font-semibold">
-          {mensajeExito}
-        </div>
-      )}
 
       {/* Tarjeta de configuración activa */}
       <Card className="space-y-4">
@@ -145,22 +195,31 @@ export default function AQ10Admin() {
 
       {/* Ítems del AQ-10 */}
       <Card className="space-y-4">
-        <CardTitle>{t('admin.aq10.items_titulo')} (10)</CardTitle>
+        <CardTitle>{t('admin.aq10.items_titulo')} ({data.items.length})</CardTitle>
+        <p className="text-xs text-tinta-suave">
+          Cada ítem puntúa 1 punto cuando la respuesta coincide con el sentido establecido. Un puntaje total igual o superior al punto de corte ({data.punto_corte}) alerta a Bienestar.
+        </p>
         <ol className="divide-y divide-borde text-sm">
-          {data.items.map((it) => (
-            <li key={it.numero} className="py-2.5 flex items-start gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cobalto-claro/30 font-bold text-cobalto text-xs">
-                {it.numero}
-              </span>
-              <div className="flex-1">
-                <p className="text-tinta font-medium">{it.enunciado}</p>
-                <div className="mt-1 flex gap-2 text-xs text-tinta-suave">
-                  <span>{t('admin.aq10.sentido')}: {it.sentido}</span>
-                  {it.dominio && <span>· {t('admin.aq10.dominio')}: {it.dominio}</span>}
+          {data.items.map((it) => {
+            const textoEnunciado = it.texto || it.enunciado || 'Enunciado no disponible';
+            const sentidoPuntuacion = it.puntua_si || it.sentido || 'No especificado';
+            return (
+              <li key={it.numero} className="py-3 flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cobalto-claro/30 font-bold text-cobalto text-xs">
+                  {it.numero}
+                </span>
+                <div className="flex-1">
+                  <p className="text-tinta font-medium leading-relaxed">{textoEnunciado}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-tinta-suave">
+                    <span>
+                      <strong className="text-tinta font-semibold">{t('admin.aq10.sentido')}:</strong> Puntúa 1 si responde {sentidoPuntuacion.toLowerCase()}
+                    </span>
+                    {it.dominio && <span>· <strong className="text-tinta font-semibold">{t('admin.aq10.dominio')}:</strong> {it.dominio}</span>}
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ol>
       </Card>
 
