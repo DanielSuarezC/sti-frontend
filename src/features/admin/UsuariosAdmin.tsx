@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Mail, Plus, UserCheck, UserX } from 'lucide-react';
+import { KeyRound, Plus, UserCheck, UserX } from 'lucide-react';
 import {
   Badge,
   Button,
   Card,
+  ConfirmDialog,
   Dialog,
   EmptyState,
   Input,
@@ -12,7 +13,9 @@ import {
   Select,
   useToast,
 } from '@/components/ui';
-import { api, type ApiError } from '@/lib/api';
+import { useIntl } from 'react-intl';
+import { api, getErrorMessage, type ApiError } from '@/lib/api';
+import { AccesoDialog, type AccesoCuenta } from '@/features/_shared/AccesoEntregado';
 import { useAuth } from '@/lib/auth';
 import { useT, useEnum } from '@/lib/useT';
 import type { Pagina } from '@/lib/types';
@@ -31,8 +34,20 @@ interface UsuarioItem {
   programa_id?: number;
 }
 
+/** Respuesta de las acciones que entregan credenciales (el backend ya no envía correos). */
+interface RespuestaConAcceso {
+  acceso?: AccesoCuenta | null;
+}
+
+interface AccesoMostrado {
+  acceso: AccesoCuenta;
+  nombre: string;
+  titulo: string;
+}
+
 export default function UsuariosAdmin() {
   const t = useT();
+  const intl = useIntl();
   const e = useEnum();
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
@@ -56,6 +71,8 @@ export default function UsuariosAdmin() {
 
   // Acciones rápidas
   const [procesandoId, setProcesandoId] = useState<number | null>(null);
+  const [accesoMostrado, setAccesoMostrado] = useState<AccesoMostrado | null>(null);
+  const [usuarioRestablecer, setUsuarioRestablecer] = useState<UsuarioItem | null>(null);
 
   const cargarUsuarios = (numPagina = 1) => {
     setCargando(true);
@@ -90,7 +107,7 @@ export default function UsuariosAdmin() {
     setGuardando(true);
     setErrorModal(null);
     try {
-      await api.post('/usuarios', {
+      const res = await api.post<RespuestaConAcceso>('/usuarios', {
         email: nuevoEmail.trim(),
         nombre_completo: nuevoNombre.trim(),
         rol: nuevoRol,
@@ -99,9 +116,14 @@ export default function UsuariosAdmin() {
       });
       toast({
         variant: 'exito',
-        title: 'Usuario creado e invitado',
-        description: `Se creó la cuenta para ${nuevoNombre.trim()} y se envió la invitación al correo ${nuevoEmail.trim()} (válida por 72 horas).`,
+        title: 'Usuario creado',
+        description: res.acceso
+          ? `Se creó la cuenta de ${nuevoNombre.trim()}. Entréguele los datos de acceso que se muestran en pantalla.`
+          : `Se creó la cuenta de ${nuevoNombre.trim()}.`,
       });
+      if (res.acceso) {
+        setAccesoMostrado({ acceso: res.acceso, nombre: nuevoNombre.trim(), titulo: 'Cuenta creada' });
+      }
       setModalAbierto(false);
       setNuevoEmail('');
       setNuevoNombre('');
@@ -128,12 +150,19 @@ export default function UsuariosAdmin() {
     setProcesandoId(u.id);
     try {
       if (activar) {
-        await api.post(`/usuarios/${u.id}/reactivar`, { motivo: 'Activación administrativa' });
+        const res = await api.post<RespuestaConAcceso>(`/usuarios/${u.id}/reactivar`, {
+          motivo: 'Activación administrativa',
+        });
         toast({
           variant: 'exito',
           title: 'Usuario activado',
-          description: `La cuenta de ${u.nombre_completo} ha sido activada exitosamente.`,
+          description: res.acceso
+            ? `La cuenta de ${u.nombre_completo} se activó. Entréguele los nuevos datos de acceso.`
+            : `La cuenta de ${u.nombre_completo} ha sido activada exitosamente.`,
         });
+        if (res.acceso) {
+          setAccesoMostrado({ acceso: res.acceso, nombre: u.nombre_completo, titulo: 'Cuenta reactivada' });
+        }
       } else {
         await api.post(`/usuarios/${u.id}/desactivar`, { motivo: 'Desactivación administrativa' });
         toast({
@@ -155,22 +184,52 @@ export default function UsuariosAdmin() {
     }
   };
 
-  const handleReenviarInvitacion = async (u: UsuarioItem) => {
+  const handleGenerarAcceso = async (u: UsuarioItem) => {
     setProcesandoId(u.id);
     try {
-      await api.post(`/usuarios/${u.id}/reenviar-invitacion`, {});
+      const res = await api.post<RespuestaConAcceso>(`/usuarios/${u.id}/reenviar-invitacion`, {});
       toast({
         variant: 'exito',
-        title: t('admin.usuarios.invitacion_reenviada'),
-        description: `Se envió un nuevo enlace de activación a ${u.email} válido por 72 horas.`,
+        title: 'Nuevo acceso generado',
+        description: `Se generó un nuevo acceso para ${u.nombre_completo}. Entréguelo por un medio seguro.`,
       });
+      if (res.acceso) {
+        setAccesoMostrado({ acceso: res.acceso, nombre: u.nombre_completo, titulo: 'Nuevo acceso generado' });
+      }
       cargarUsuarios(page);
-    } catch (err: any) {
-      const apiErr = err as ApiError;
+    } catch (err) {
       toast({
         variant: 'error',
-        title: t('admin.usuarios.error_reenviar_invitacion'),
-        description: apiErr.detail || 'Error al reenviar la invitación por correo.',
+        title: 'No se pudo generar el acceso',
+        description: getErrorMessage(err, intl),
+      });
+    } finally {
+      setProcesandoId(null);
+    }
+  };
+
+  const handleRestablecerClave = async () => {
+    const u = usuarioRestablecer;
+    if (!u) return;
+    setProcesandoId(u.id);
+    try {
+      const res = await api.post<RespuestaConAcceso>(`/usuarios/${u.id}/restablecer-clave`);
+      setUsuarioRestablecer(null);
+      toast({
+        variant: 'exito',
+        title: 'Contraseña restablecida',
+        description: `Se generó una contraseña provisional para ${u.nombre_completo}. Entréguela por un medio seguro.`,
+      });
+      if (res.acceso) {
+        setAccesoMostrado({ acceso: res.acceso, nombre: u.nombre_completo, titulo: 'Contraseña restablecida' });
+      }
+      cargarUsuarios(page);
+    } catch (err) {
+      setUsuarioRestablecer(null);
+      toast({
+        variant: 'error',
+        title: 'No se pudo restablecer la contraseña',
+        description: getErrorMessage(err, intl),
       });
     } finally {
       setProcesandoId(null);
@@ -270,9 +329,7 @@ export default function UsuariosAdmin() {
                           </Badge>
                           {u.invitacion_pendiente && (
                             <span className="text-xs text-mandarina font-medium">
-                              {u.invitacion_vencida
-                                ? t('admin.usuarios.invitacion_vencida')
-                                : t('admin.usuarios.invitacion_pendiente')}
+                              {u.invitacion_vencida ? 'Activación vencida' : 'Activación pendiente'}
                             </span>
                           )}
                         </div>
@@ -283,12 +340,24 @@ export default function UsuariosAdmin() {
                             <Button
                               variant="fantasma"
                               loading={ocupado}
-                              onClick={() => handleReenviarInvitacion(u)}
+                              onClick={() => handleGenerarAcceso(u)}
                             >
-                              <Mail className="mr-1 h-3.5 w-3.5" />
-                              {t('admin.usuarios.boton_reenviar')}
+                              <KeyRound className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                              Generar nuevo acceso
                             </Button>
                           )}
+                          {(activo || u.invitacion_pendiente) &&
+                            (u.rol === 'DOCENTE' || u.rol === 'ESTUDIANTE') &&
+                            !esPropioAdmin && (
+                              <Button
+                                variant="secundaria"
+                                loading={ocupado}
+                                onClick={() => setUsuarioRestablecer(u)}
+                              >
+                                <KeyRound className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                                Restablecer contraseña
+                              </Button>
+                            )}
                           {esPropioAdmin && activo ? (
                             <span
                               className="inline-flex items-center rounded-control bg-fondo-suave px-2.5 py-1.5 text-xs text-tinta-suave border border-borde font-medium select-none"
@@ -353,7 +422,7 @@ export default function UsuariosAdmin() {
         open={modalAbierto}
         onOpenChange={setModalAbierto}
         title={t('admin.usuarios.modal_crear_titulo')}
-        description={t('admin.usuarios.modal_crear_desc')}
+        description="Al guardar se mostrarán los datos de acceso (correo y contraseña provisional) para que se los entregue a la persona. El sistema no envía correos."
         footer={
           <div className="flex gap-2 justify-end w-full">
             <Button variant="fantasma" onClick={() => setModalAbierto(false)}>
@@ -365,7 +434,7 @@ export default function UsuariosAdmin() {
               disabled={!nuevoEmail.trim() || !nuevoNombre.trim()}
               onClick={handleCrearUsuario}
             >
-              {t('admin.usuarios.boton_guardar_invitar')}
+              Crear cuenta
             </Button>
           </div>
         }
@@ -416,6 +485,26 @@ export default function UsuariosAdmin() {
           />
         </div>
       </Dialog>
+
+      <AccesoDialog
+        acceso={accesoMostrado?.acceso ?? null}
+        nombre={accesoMostrado?.nombre}
+        titulo={accesoMostrado?.titulo}
+        onClose={() => setAccesoMostrado(null)}
+      />
+
+      <ConfirmDialog
+        open={usuarioRestablecer !== null}
+        onOpenChange={(o) => {
+          if (!o) setUsuarioRestablecer(null);
+        }}
+        title="Restablecer contraseña"
+        description={`Se generará una contraseña provisional para ${usuarioRestablecer?.nombre_completo ?? 'la persona'}. La contraseña actual dejará de funcionar y la nueva se muestra una sola vez.`}
+        confirmLabel="Restablecer contraseña"
+        variant="peligro"
+        loading={procesandoId !== null && procesandoId === usuarioRestablecer?.id}
+        onConfirm={handleRestablecerClave}
+      />
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Ellipsis, LogOut, Route as RouteIcon, SlidersHorizontal } from 'lucide-react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Ellipsis, LogOut, Route as RouteIcon, SlidersHorizontal, UserCog } from 'lucide-react';
 import { useIntl } from 'react-intl';
-import { Button, Dialog } from '@/components/ui';
+import { Button, Dialog, buttonClasses } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/lib/auth';
 import type { Rol } from '@/lib/types';
@@ -113,6 +113,13 @@ function SideRail({
           <SlidersHorizontal aria-hidden className="size-6 shrink-0" />
           {intl.formatMessage({ id: 'shell.como_me_siento' })}
         </button>
+        <NavLink
+          to="/cuenta"
+          className={({ isActive }) => cn(itemClase({ isActive }), 'w-full text-left')}
+        >
+          <UserCog aria-hidden className="size-6 shrink-0" />
+          {intl.formatMessage({ id: 'shell.mi_cuenta' })}
+        </NavLink>
         <button
           type="button"
           onClick={onLogout}
@@ -218,6 +225,16 @@ function MenuDialog({
           </button>
         </li>
         <li>
+          <NavLink
+            to="/cuenta"
+            onClick={() => onOpenChange(false)}
+            className={({ isActive }) => cn(itemClase({ isActive }), 'w-full text-left')}
+          >
+            <UserCog aria-hidden className="size-6 shrink-0" />
+            {intl.formatMessage({ id: 'shell.mi_cuenta' })}
+          </NavLink>
+        </li>
+        <li>
           <button
             type="button"
             className={cn(itemClase({ isActive: false }), 'w-full text-left')}
@@ -269,6 +286,10 @@ function Header({
             >
               {intl.formatMessage({ id: 'shell.como_me_siento' })}
             </Button>
+            <Link to="/cuenta" className={buttonClasses('secundaria')}>
+              <UserCog aria-hidden className="size-5" />
+              {intl.formatMessage({ id: 'shell.mi_cuenta' })}
+            </Link>
             <Button
               variant="secundaria"
               leftIcon={<LogOut className="size-5" />}

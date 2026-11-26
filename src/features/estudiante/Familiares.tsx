@@ -11,6 +11,7 @@ import {
   PageHeader,
 } from '@/components/ui';
 import { api, type ApiError } from '@/lib/api';
+import { CampoCopiable } from '@/features/_shared/AccesoEntregado';
 
 interface FamiliarItem {
   id: number;
@@ -19,6 +20,10 @@ interface FamiliarItem {
   parentesco?: string;
   alcances: string[];
   activo: boolean;
+  /** `PENDIENTE` hasta que el familiar se registra con su código. */
+  estado?: string;
+  /** Solo viene mientras la autorización está `PENDIENTE`. */
+  codigo_vinculacion?: string | null;
   created_at: string;
 }
 
@@ -163,6 +168,17 @@ export default function FamiliaresEstudiante() {
                   {t('familiares.boton_revocar')}
                 </Button>
               </div>
+
+              {f.estado === 'PENDIENTE' && f.codigo_vinculacion && (
+                <div className="space-y-3 rounded-control border-2 border-cobalto bg-cobalto-tinte p-3">
+                  <p className="text-sm font-bold text-tinta">Falta que tu familiar se registre</p>
+                  <p className="text-sm text-tinta">
+                    Entrégale este código a {f.nombre_familiar}. Debe entrar a la página de registro, elegir «Familiar» y
+                    escribir su correo ({f.email_familiar}) junto con este código. Al terminar, la autorización queda vigente.
+                  </p>
+                  <CampoCopiable etiqueta="Código de vinculación" valor={f.codigo_vinculacion} />
+                </div>
+              )}
 
               <div className="border-t-2 border-borde pt-2">
                 <p className="text-xs font-bold text-tinta-suave uppercase">{t('familiares.permisos_otorgados')}:</p>

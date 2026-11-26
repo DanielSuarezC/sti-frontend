@@ -80,6 +80,8 @@ const NO_REFRESH_PATHS = [
   '/auth/activate',
   '/auth/forgot-password',
   '/auth/reset-password',
+  '/auth/register',
+  '/auth/recover',
 ];
 
 function buildUrl(path: string, query?: Query): string {

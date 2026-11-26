@@ -3,10 +3,11 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CircleCheck, KeyRound, Mail } from 'lucide-react';
+import { CircleCheck, KeyRound } from 'lucide-react';
 import { useIntl } from 'react-intl';
 import { Button, Card, ErrorState, Input, PageHeader, buttonClasses } from '@/components/ui';
 import { getErrorMessage, post } from '@/lib/api';
+import { CampoCopiable } from '@/features/_shared/AccesoEntregado';
 import { NarrowPage } from './PublicLayout';
 import { useDocumentTitle } from './useDocumentTitle';
 
@@ -61,7 +62,7 @@ function SetPasswordPage({
     () =>
       z
         .object({
-          password: z.string().min(8, t('validacion.clave_min', { n: 8 })),
+          password: z.string().min(10, t('validacion.clave_min', { n: 10 })),
           confirm: z.string().min(1, t('validacion.clave_confirmar')),
         })
         .refine((v) => v.password === v.confirm, {
@@ -128,7 +129,7 @@ function SetPasswordPage({
           )}
           <Input
             label={t('clave.nueva')}
-            help={t('clave.requisitos', { n: 8 })}
+            help={t('clave.requisitos', { n: 10 })}
             type="password"
             autoComplete="new-password"
             required
@@ -187,33 +188,49 @@ export function RestablecerClave() {
 
 export function RecuperarClave() {
   const intl = useIntl();
-  const t = (id: string) => intl.formatMessage({ id });
-  const [sent, setSent] = useState(false);
+  const t = (id: string, v?: Record<string, string | number>) => intl.formatMessage({ id }, v);
+  const [nuevoCodigo, setNuevoCodigo] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   useDocumentTitle(t('recuperar.titulo'));
 
   const schema = useMemo(
     () =>
-      z.object({
-        email: z
-          .string()
-          .min(1, t('validacion.correo_requerido'))
-          .email(t('validacion.correo_invalido')),
-      }),
+      z
+        .object({
+          email: z
+            .string()
+            .min(1, t('validacion.correo_requerido'))
+            .email(t('validacion.correo_invalido')),
+          codigo: z.string().trim().min(8, t('recuperar.codigo_ayuda')),
+          password: z
+            .string()
+            .min(10, t('validacion.clave_min', { n: 10 }))
+            .regex(/[A-Za-zÁÉÍÓÚáéíóúÑñ]/, t('registro.v_clave_letra'))
+            .regex(/\d/, t('registro.v_clave_numero')),
+          confirm: z.string().min(1, t('validacion.clave_confirmar')),
+        })
+        .refine((v) => v.password === v.confirm, {
+          path: ['confirm'],
+          message: t('validacion.clave_no_coincide'),
+        }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [intl],
   );
   type Values = z.infer<typeof schema>;
   const { register, handleSubmit, formState } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '' },
+    defaultValues: { email: '', codigo: '', password: '', confirm: '' },
   });
 
-  const onSubmit = handleSubmit(async ({ email }) => {
+  const onSubmit = handleSubmit(async ({ email, codigo, password }) => {
     setServerError(null);
     try {
-      await post('/auth/forgot-password', { email: email.trim() }, { anonymous: true });
-      setSent(true);
+      const r = await post<{ codigo_recuperacion: string }>(
+        '/auth/recover',
+        { email: email.trim(), codigo_recuperacion: codigo.trim(), password },
+        { anonymous: true },
+      );
+      setNuevoCodigo(r.codigo_recuperacion);
     } catch (e) {
       setServerError(getErrorMessage(e, intl));
     }
@@ -222,8 +239,24 @@ export function RecuperarClave() {
   return (
     <NarrowPage>
       <PageHeader title={t('recuperar.titulo')} description={t('recuperar.descripcion')} />
-      {sent ? (
-        <Hecho titulo={t('recuperar.hecho_titulo')} descripcion={t('recuperar.hecho_desc')} />
+      {nuevoCodigo ? (
+        <Card color="turquesa" padding="lg">
+          <div role="status" className="space-y-5">
+            <div className="flex items-start gap-4">
+              <CircleCheck aria-hidden className="mt-1 size-8 shrink-0 text-verde" />
+              <div>
+                <h2 className="text-xl">{t('recuperar.hecho_titulo')}</h2>
+                <p className="mt-2 text-base">{t('recuperar.hecho_desc')}</p>
+              </div>
+            </div>
+            <CampoCopiable etiqueta={t('recuperar.codigo_nuevo')} valor={nuevoCodigo} />
+          </div>
+          <div className="mt-6 flex justify-end border-t-2 border-borde pt-5">
+            <Link to="/login" className={buttonClasses('primaria', 'lg')}>
+              {t('clave.ir_login')}
+            </Link>
+          </div>
+        </Card>
       ) : (
         <Card color="cobalto" padding="lg">
           <form onSubmit={(e) => void onSubmit(e)} noValidate className="space-y-5">
@@ -244,6 +277,32 @@ export function RecuperarClave() {
               error={formState.errors.email?.message}
               {...register('email')}
             />
+            <Input
+              label={t('recuperar.codigo')}
+              help={t('recuperar.codigo_ayuda')}
+              autoComplete="off"
+              required
+              error={formState.errors.codigo?.message}
+              {...register('codigo')}
+            />
+            <Input
+              label={t('clave.nueva')}
+              help={t('clave.requisitos', { n: 10 })}
+              type="password"
+              autoComplete="new-password"
+              required
+              error={formState.errors.password?.message}
+              {...register('password')}
+            />
+            <Input
+              label={t('clave.repetir')}
+              type="password"
+              autoComplete="new-password"
+              required
+              error={formState.errors.confirm?.message}
+              {...register('confirm')}
+            />
+            <p className="text-sm text-tinta-suave">{t('recuperar.sin_codigo')}</p>
             <div className="flex flex-col-reverse gap-4 border-t-2 border-borde pt-5 sm:flex-row sm:items-center sm:justify-between">
               <Link to="/login" className="inline-flex min-h-tactil items-center font-bold">
                 {t('recuperar.volver')}
@@ -252,7 +311,7 @@ export function RecuperarClave() {
                 type="submit"
                 size="lg"
                 loading={formState.isSubmitting}
-                rightIcon={<Mail className="size-5" />}
+                rightIcon={<KeyRound className="size-5" />}
               >
                 {t('recuperar.boton')}
               </Button>

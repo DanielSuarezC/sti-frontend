@@ -25,6 +25,8 @@ interface AuthContextValue {
   /** Vuelve a pedir `GET /auth/me` (p. ej. tras firmar el consentimiento F0). */
   refreshUser: () => Promise<Usuario>;
   setUser: (u: Usuario | null) => void;
+  /** Aplica una sesión ya creada por el backend (registro autónomo). */
+  acceptSession: (r: AuthResponse) => void;
   hasRole: (...roles: Rol[]) => boolean;
 }
 
@@ -92,6 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [setUser],
   );
 
+  const acceptSession = useCallback(
+    (r: AuthResponse) => {
+      setAccessToken(r.access_token);
+      setUser(r.user);
+    },
+    [setUser],
+  );
+
   const logout = useCallback(async () => {
     try {
       await post('/auth/logout');
@@ -117,9 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshUser,
       setUser,
+      acceptSession,
       hasRole: (...roles) => !!user && roles.includes(user.rol),
     }),
-    [status, user, login, logout, refreshUser, setUser],
+    [status, user, login, logout, refreshUser, setUser, acceptSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

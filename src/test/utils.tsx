@@ -38,6 +38,7 @@ export function FakeAuth({
         logout: async () => {},
         refreshUser: async () => user!,
         setUser: () => {},
+        acceptSession: () => {},
         hasRole: (...r) => !!user && r.includes(user.rol),
       }}
     >

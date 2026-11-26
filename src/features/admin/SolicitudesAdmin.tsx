@@ -10,8 +10,11 @@ import {
   PageHeader,
   Select,
   Textarea,
+  useToast,
 } from '@/components/ui';
-import { api, type ApiError } from '@/lib/api';
+import { useIntl } from 'react-intl';
+import { api, getErrorMessage, type ApiError } from '@/lib/api';
+import { AccesoDialog, type AccesoCuenta } from '@/features/_shared/AccesoEntregado';
 import { useT, useEnum, useFmt } from '@/lib/useT';
 import type { Pagina } from '@/lib/types';
 
@@ -32,6 +35,8 @@ interface SolicitudItem {
 
 export default function SolicitudesAdmin() {
   const t = useT();
+  const intl = useIntl();
+  const { toast } = useToast();
   const e = useEnum();
   const f = useFmt();
 
@@ -48,6 +53,7 @@ export default function SolicitudesAdmin() {
 
   // Procesando aprobación
   const [procesandoId, setProcesandoId] = useState<number | null>(null);
+  const [accesoAprobado, setAccesoAprobado] = useState<{ acceso: AccesoCuenta; nombre: string } | null>(null);
 
   const cargarSolicitudes = (numPagina = 1) => {
     setCargando(true);
@@ -74,12 +80,22 @@ export default function SolicitudesAdmin() {
   const handleAprobar = async (s: SolicitudItem) => {
     setProcesandoId(s.id);
     try {
-      await api.post(`/solicitudes/${s.id}/aprobar`, {});
-      alert(t('admin.solicitudes.aprobada_exito'));
+      const res = await api.post<{ acceso?: AccesoCuenta | null }>(`/solicitudes/${s.id}/aprobar`, {});
+      toast({
+        variant: 'exito',
+        title: 'Solicitud aprobada',
+        description: res.acceso
+          ? `La cuenta de ${s.nombre_completo} quedó creada. Entréguele los datos de acceso que se muestran en pantalla.`
+          : `La solicitud de ${s.nombre_completo} quedó aprobada.`,
+      });
+      if (res.acceso) setAccesoAprobado({ acceso: res.acceso, nombre: s.nombre_completo });
       cargarSolicitudes(page);
-    } catch (err: any) {
-      const apiErr = err as ApiError;
-      alert(apiErr.detail || t('admin.solicitudes.error_aprobar'));
+    } catch (err) {
+      toast({
+        variant: 'error',
+        title: 'No se pudo aprobar la solicitud',
+        description: getErrorMessage(err, intl),
+      });
     } finally {
       setProcesandoId(null);
     }
@@ -245,6 +261,13 @@ export default function SolicitudesAdmin() {
           </div>
         </Card>
       )}
+
+      <AccesoDialog
+        acceso={accesoAprobado?.acceso ?? null}
+        nombre={accesoAprobado?.nombre}
+        titulo="Solicitud aprobada"
+        onClose={() => setAccesoAprobado(null)}
+      />
 
       {/* Modal Rechazar */}
       <Dialog

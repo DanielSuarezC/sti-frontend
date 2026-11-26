@@ -103,7 +103,7 @@ export default function Login() {
       </Card>
       <p className="mt-6 text-base">
         {t('login.sin_cuenta')}{' '}
-        <Link to="/solicitar-acceso" className="font-bold">
+        <Link to="/registro" className="font-bold">
           {t('login.solicitar')}
         </Link>
       </p>

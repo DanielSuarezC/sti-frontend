@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { FileCheck, Upload, AlertTriangle, FileSpreadsheet, FileText } from 'lucide-react';
+import { FileCheck, Upload, AlertTriangle, FileSpreadsheet, FileText, Download } from 'lucide-react';
 import {
   Badge,
   Button,
@@ -10,12 +10,39 @@ import {
 } from '@/components/ui';
 import { api, type ApiError } from '@/lib/api';
 import { useT } from '@/lib/useT';
+import { Aviso } from '@/features/_shared/AlertaError';
+import { descargarTexto, type AccesoCuenta } from '@/features/_shared/AccesoEntregado';
 
 interface FilaError {
   fila: number;
   campo?: string;
   error?: string;
   mensaje?: string;
+}
+
+type CredencialCreada = { nombre_completo: string; codigo_estudiante: string } & AccesoCuenta;
+
+/** Celda CSV con comillas escapadas; `neutralizar` evita que Excel interprete texto como fórmula. */
+function celdaCsv(valor: string | null | undefined, neutralizar = true): string {
+  let v = valor ?? '';
+  if (neutralizar && /^[=+\-@\t\r]/.test(v)) v = `'${v}`;
+  return `"${v.replace(/"/g, '""')}"`;
+}
+
+function credencialesACsv(filas: CredencialCreada[]): string {
+  const encabezado = ['Nombre', 'Código', 'Correo', 'Contraseña provisional o enlace de activación', 'Código de recuperación'];
+  const lineas = filas.map((c) =>
+    [
+      celdaCsv(c.nombre_completo),
+      celdaCsv(c.codigo_estudiante),
+      celdaCsv(c.email),
+      // La contraseña va tal cual (no se altera con apóstrofo); solo se escapan las comillas.
+      celdaCsv(c.password_temporal ?? c.enlace_activacion ?? '', false),
+      celdaCsv(c.codigo_recuperacion ?? '', false),
+    ].join(','),
+  );
+  // BOM para que Excel abra bien las tildes.
+  return '\uFEFF' + [encabezado.map((h) => celdaCsv(h, false)).join(','), ...lineas].join('\r\n');
 }
 
 interface ResultadoImportacion {
@@ -28,6 +55,8 @@ interface ResultadoImportacion {
   usuarios_creados?: number;
   creados?: number;
   errores: FilaError[];
+  /** Una por cuenta creada; solo viene en la importación definitiva. */
+  credenciales?: CredencialCreada[];
 }
 
 export default function ImportacionEstudiantes() {
@@ -250,6 +279,31 @@ export default function ImportacionEstudiantes() {
                 usr: resultado.creados ?? resultado.usuarios_creados ?? 0,
               })}
             </p>
+          )}
+
+          {!resultado.dry_run && resultado.credenciales && resultado.credenciales.length > 0 && (
+            <div className="space-y-3 rounded-control border-2 border-borde p-4">
+              <Aviso tono="aviso">
+                Se crearon {resultado.credenciales.length}{' '}
+                {resultado.credenciales.length === 1 ? 'cuenta' : 'cuentas'}. Las contraseñas provisionales se muestran y se
+                pueden descargar una sola vez: descargue el archivo ahora y entréguelo por un medio seguro. Al salir de esta
+                pantalla no se podrán volver a ver.
+              </Aviso>
+              <Button
+                type="button"
+                variant="primaria"
+                leftIcon={<Download className="size-5" />}
+                onClick={() =>
+                  descargarTexto(
+                    'credenciales-estudiantes.csv',
+                    credencialesACsv(resultado.credenciales ?? []),
+                    'text/csv',
+                  )
+                }
+              >
+                Descargar credenciales (CSV)
+              </Button>
+            </div>
           )}
 
           {resultado.errores.length > 0 && (

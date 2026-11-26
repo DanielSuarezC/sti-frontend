@@ -7,6 +7,9 @@ import Login from '@/features/public/Login';
 import { ActivarCuenta, RecuperarClave, RestablecerClave } from '@/features/public/PasswordPages';
 import Privacidad from '@/features/public/Privacidad';
 import SolicitarAcceso from '@/features/public/SolicitarAcceso';
+import Registro from '@/features/public/Registro';
+import MiCuenta from '@/features/cuenta/MiCuenta';
+import { useAuth } from '@/lib/auth';
 import { Forbidden, GlobalError, NotFound } from '@/features/public/ErrorPages';
 import Consentimiento from '@/features/estudiante/Consentimiento';
 import { estudianteRoutes } from '@/features/estudiante/routes';
@@ -25,6 +28,15 @@ const ROLES: { path: string; rol: Rol; children: RouteObject[] }[] = [
   { path: 'familiar', rol: 'FAMILIAR', children: familiarRoutes },
   { path: 'admin', rol: 'ADMIN', children: adminRoutes },
 ];
+
+/** `/cuenta`: misma pantalla para todos los roles, dentro del marco de su rol (sin riel si aún falta el F0). */
+function CuentaShell() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return (
+    <AppShell rol={user.rol} minimal={user.rol === 'ESTUDIANTE' && !user.consentimiento_firmado} />
+  );
+}
 
 export const routes: RouteObject[] = [
   {
@@ -48,6 +60,7 @@ export const routes: RouteObject[] = [
           { path: 'recuperar', element: <RecuperarClave /> },
           { path: 'restablecer', element: <RestablecerClave /> },
           { path: 'privacidad', element: <Privacidad /> },
+          { path: 'registro', element: <Registro /> },
           { path: 'solicitar-acceso', element: <SolicitarAcceso /> },
           // Galería del sistema de diseño: solo en desarrollo (se elimina del build de producción).
           ...(import.meta.env.DEV
@@ -75,6 +88,16 @@ export const routes: RouteObject[] = [
           </RequireAuth>
         ),
         children: [{ index: true, element: <Consentimiento /> }],
+      },
+
+      {
+        path: 'cuenta',
+        element: (
+          <RequireAuth>
+            <CuentaShell />
+          </RequireAuth>
+        ),
+        children: [{ index: true, element: <MiCuenta /> }],
       },
 
       // Un árbol por rol con su shell y guard.

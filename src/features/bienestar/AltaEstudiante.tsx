@@ -9,6 +9,7 @@ import {
   Select,
 } from '@/components/ui';
 import { api, type ApiError } from '@/lib/api';
+import { AccesoDialog, type AccesoCuenta } from '@/features/_shared/AccesoEntregado';
 
 interface ProgramaOption {
   id: number;
@@ -35,7 +36,8 @@ export default function AltaEstudiante() {
 
   const [guardando, setGuardando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
-  const [exito, setExito] = useState<{ id: number; detail: string } | null>(null);
+  const [exito, setExito] = useState<{ id: number; detail: string; nombre: string } | null>(null);
+  const [acceso, setAcceso] = useState<AccesoCuenta | null>(null);
 
   useEffect(() => {
     api
@@ -67,7 +69,7 @@ export default function AltaEstudiante() {
     setErrorEnvio(null);
 
     try {
-      const res = await api.post<{ estudiante_id: number; detail: string }>('/usuarios/estudiantes', {
+      const res = await api.post<{ estudiante_id: number; detail: string; acceso?: AccesoCuenta | null }>('/usuarios/estudiantes', {
         nombre_completo: nombre.trim(),
         email: email.trim(),
         cedula: codigo.trim(),
@@ -80,7 +82,8 @@ export default function AltaEstudiante() {
         consentimiento_verbal_declarado: true,
       });
 
-      setExito({ id: res.estudiante_id, detail: res.detail });
+      setExito({ id: res.estudiante_id, detail: res.detail, nombre: nombre.trim() });
+      setAcceso(res.acceso ?? null);
     } catch (err: any) {
       const apiErr = err as ApiError;
       setErrorEnvio(apiErr.detail || t('bienestar.error_crear_estudiante'));
@@ -112,6 +115,9 @@ export default function AltaEstudiante() {
           </div>
           <h2 className="font-titulo text-xl font-bold">{t('bienestar.alta_exito_titulo')}</h2>
           <p className="text-sm text-tinta-suave max-w-medida mx-auto">{exito.detail}</p>
+          <p className="text-sm text-tinta-suave max-w-medida mx-auto">
+            Entregue a {exito.nombre} sus datos de acceso. Al iniciar sesión por primera vez, firmará el consentimiento informado (F0).
+          </p>
           <div className="flex justify-center gap-3 pt-3">
             <Button variant="secundaria" onClick={() => navigate('/bienestar/tablero')}>
               {t('bienestar.volver_al_tablero')}
@@ -123,6 +129,12 @@ export default function AltaEstudiante() {
               {t('bienestar.ir_al_expediente')}
             </Button>
           </div>
+          <AccesoDialog
+            acceso={acceso}
+            nombre={exito.nombre}
+            titulo="Estudiante registrado: entregue su acceso"
+            onClose={() => setAcceso(null)}
+          />
         </Card>
       ) : (
         <Card className="p-6">
@@ -239,17 +251,20 @@ export default function AltaEstudiante() {
                 <span className="text-sm font-semibold text-tinta">
                   Declaro que he informado al estudiante sobre el modelo MAAR-TEA y he obtenido su{' '}
                   <span className="text-cobalto font-bold underline">consentimiento verbal informado</span> para
-                  iniciar su expediente y enviarle la invitación digital para la firma del consentimiento informado (F0).
+                  iniciar su expediente. Al terminar el registro recibiré sus datos de acceso para entregárselos.
                 </span>
               </label>
               <p className="text-xs text-tinta-suave pl-7">
-                El consentimiento verbal autoriza la apertura del expediente en Bienestar. El estudiante deberá firmar el Formato F0 digital en su primer inicio de sesión.
+                El consentimiento verbal autoriza la apertura del expediente en Bienestar. El estudiante deberá firmar el Formato F0 digital en su primer inicio de sesión. El sistema no envía correos: usted le entrega el acceso.
               </p>
             </div>
 
             <div className="rounded-control border-2 border-limon bg-limon-tinte p-3 text-xs font-medium text-tinta">
               <p className="font-bold">{t('bienestar.aviso_via1_titulo')}</p>
-              <p className="mt-1">{t('bienestar.aviso_via1_desc')}</p>
+              <p className="mt-1">
+                Al registrar, el sistema muestra una sola vez el correo y la contraseña provisional del estudiante. Entrégueselos
+                por un medio seguro; él deberá firmar el formato F0 al ingresar.
+              </p>
             </div>
 
             <div className="flex justify-end gap-3 pt-3">

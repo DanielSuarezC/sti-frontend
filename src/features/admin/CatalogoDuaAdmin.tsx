@@ -20,12 +20,9 @@ interface EstrategiaDua {
   codigo: string;
   nombre: string;
   principio: string;
-  pauta: string;
-  punto_verificacion?: string;
+  pauta: number;
+  punto_verificacion?: string | null;
   descripcion_pedagogica: string;
-  ejemplo_aplicacion?: string;
-  orientaciones_docente?: string;
-  tecnologia_apoyo?: string;
   escenarios?: string[];
   tipos_barrera?: string[];
   activo: boolean;
@@ -53,8 +50,6 @@ export default function CatalogoDuaAdmin() {
   const [pauta, setPauta] = useState('');
   const [puntoVerificacion, setPuntoVerificacion] = useState('');
   const [descripcionPedagogica, setDescripcionPedagogica] = useState('');
-  const [ejemplo, setEjemplo] = useState('');
-  const [orientaciones, setOrientaciones] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [errorModal, setErrorModal] = useState<string | null>(null);
 
@@ -74,9 +69,10 @@ export default function CatalogoDuaAdmin() {
     if (soloActivas !== '') params.activa = soloActivas === 'true';
 
     api
-      .get<EstrategiaDua[]>('/catalogo-dua', { query: params })
+      .get<{ items: EstrategiaDua[] }>('/catalogo-dua/estrategias', { query: { ...params, page_size: 100 } })
       .then((res) => {
-        setEstrategias(res);
+        setError(null);
+        setEstrategias(res.items ?? []);
         setCargando(false);
       })
       .catch((err: any) => {
@@ -100,11 +96,9 @@ export default function CatalogoDuaAdmin() {
     setCodigo('');
     setNombre('');
     setPrincipio('REPRESENTACION');
-    setPauta('');
+    setPauta('1');
     setPuntoVerificacion('');
     setDescripcionPedagogica('');
-    setEjemplo('');
-    setOrientaciones('');
     setErrorModal(null);
     setModalAbierto(true);
   };
@@ -114,11 +108,9 @@ export default function CatalogoDuaAdmin() {
     setCodigo(est.codigo);
     setNombre(est.nombre);
     setPrincipio(est.principio);
-    setPauta(est.pauta);
+    setPauta(String(est.pauta));
     setPuntoVerificacion(est.punto_verificacion ?? '');
     setDescripcionPedagogica(est.descripcion_pedagogica);
-    setEjemplo(est.ejemplo_aplicacion ?? '');
-    setOrientaciones(est.orientaciones_docente ?? '');
     setErrorModal(null);
     setModalAbierto(true);
   };
@@ -130,18 +122,16 @@ export default function CatalogoDuaAdmin() {
       codigo: codigo.trim(),
       nombre: nombre.trim(),
       principio,
-      pauta: pauta.trim(),
+      pauta: Number(pauta),
       punto_verificacion: puntoVerificacion.trim() || undefined,
       descripcion_pedagogica: descripcionPedagogica.trim(),
-      ejemplo_aplicacion: ejemplo.trim() || undefined,
-      orientaciones_docente: orientaciones.trim() || undefined,
     };
 
     try {
       if (editando) {
-        await api.put(`/catalogo-dua/${editando.id}`, payload);
+        await api.patch(`/catalogo-dua/estrategias/${editando.id}`, payload);
       } else {
-        await api.post('/catalogo-dua', payload);
+        await api.post('/catalogo-dua/estrategias', payload);
       }
       setModalAbierto(false);
       cargarCatalogo();
@@ -155,7 +145,7 @@ export default function CatalogoDuaAdmin() {
 
   const handleToggleActivo = async (est: EstrategiaDua) => {
     try {
-      await api.post(`/catalogo-dua/${est.id}/activar`, { activo: !est.activo });
+      await api.post(`/catalogo-dua/estrategias/${est.id}/${est.activo ? 'inactivar' : 'activar'}`);
       cargarCatalogo();
     } catch (err: any) {
       const apiErr = err as ApiError;
@@ -163,8 +153,14 @@ export default function CatalogoDuaAdmin() {
     }
   };
 
-  const handleExportar = () => {
-    window.open('/api/v1/catalogo-dua/exportar?formato=csv', '_blank');
+  const handleExportar = async () => {
+    try {
+      await api.downloadFile('/catalogo-dua/estrategias/exportar', 'catalogo_dua.csv', {
+        query: { formato: 'csv' },
+      });
+    } catch (err: any) {
+      alert((err as ApiError).detail || t('admin.dua.error_importar'));
+    }
   };
 
   const handleEjecutarImportacion = async () => {
@@ -177,7 +173,7 @@ export default function CatalogoDuaAdmin() {
 
     try {
       const res = await api.post<any>(
-        `/catalogo-dua/importar?dry_run=${dryRun}`,
+        `/catalogo-dua/estrategias/importar?dry_run=${dryRun}`,
         formData
       );
       setResultadoImportacion(res);
@@ -233,9 +229,9 @@ export default function CatalogoDuaAdmin() {
               onChange={(e) => setPrincipioFiltro(e.target.value)}
             >
               <option value="">{t('admin.dua.todos_los_principios')}</option>
-              <option value="COMPROMISO">{e('principio_dua', 'COMPROMISO')}</option>
               <option value="REPRESENTACION">{e('principio_dua', 'REPRESENTACION')}</option>
               <option value="ACCION_EXPRESION">{e('principio_dua', 'ACCION_EXPRESION')}</option>
+              <option value="PARTICIPACION">{e('principio_dua', 'PARTICIPACION')}</option>
             </Select>
           </div>
           <div className="w-40">
@@ -315,13 +311,6 @@ export default function CatalogoDuaAdmin() {
                 </div>
 
                 <p className="text-sm">{est.descripcion_pedagogica}</p>
-
-                {est.ejemplo_aplicacion && (
-                  <p className="rounded bg-fondo-suave p-2 text-xs text-tinta-suave">
-                    <span className="font-semibold">{t('admin.dua.ejemplo')}: </span>
-                    {est.ejemplo_aplicacion}
-                  </p>
-                )}
               </Card>
             ))}
           </div>
@@ -343,7 +332,7 @@ export default function CatalogoDuaAdmin() {
             <Button
               variant="primaria"
               loading={guardando}
-              disabled={!codigo.trim() || !nombre.trim() || !descripcionPedagogica.trim()}
+              disabled={!codigo.trim() || !nombre.trim() || descripcionPedagogica.trim().length < 10 || !(Number(pauta) >= 1 && Number(pauta) <= 9)}
               onClick={handleGuardar}
             >
               {t('comun.guardar')}
@@ -370,9 +359,9 @@ export default function CatalogoDuaAdmin() {
               value={principio}
               onChange={(e) => setPrincipio(e.target.value)}
             >
-              <option value="COMPROMISO">{e('principio_dua', 'COMPROMISO')}</option>
               <option value="REPRESENTACION">{e('principio_dua', 'REPRESENTACION')}</option>
               <option value="ACCION_EXPRESION">{e('principio_dua', 'ACCION_EXPRESION')}</option>
+              <option value="PARTICIPACION">{e('principio_dua', 'PARTICIPACION')}</option>
             </Select>
           </div>
 
@@ -386,12 +375,17 @@ export default function CatalogoDuaAdmin() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label={t('admin.dua.campo_pauta')}
+              help="Número de pauta CAST, de 1 a 9."
+              type="number"
+              min={1}
+              max={9}
               required
               value={pauta}
               onChange={(e) => setPauta(e.target.value)}
             />
             <Input
               label={t('admin.dua.campo_punto_verificacion')}
+              help="Opcional. Formato 1.1, 2.3…"
               value={puntoVerificacion}
               onChange={(e) => setPuntoVerificacion(e.target.value)}
             />
@@ -405,19 +399,6 @@ export default function CatalogoDuaAdmin() {
             onChange={(e) => setDescripcionPedagogica(e.target.value)}
           />
 
-          <Textarea
-            label={t('admin.dua.campo_ejemplo')}
-            rows={2}
-            value={ejemplo}
-            onChange={(e) => setEjemplo(e.target.value)}
-          />
-
-          <Textarea
-            label={t('admin.dua.campo_orientaciones')}
-            rows={2}
-            value={orientaciones}
-            onChange={(e) => setOrientaciones(e.target.value)}
-          />
         </div>
       </Dialog>
 
